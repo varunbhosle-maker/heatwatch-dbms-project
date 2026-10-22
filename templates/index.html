@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HeatWatch | Heatwave Early Warning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#fff4e6;--dim:#f3c9b0;--panel:rgba(18,6,40,.66);--line:rgba(255,220,190,.24);--hot:#ffb02e}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Instrument Sans","Segoe UI",system-ui,sans-serif;color:var(--ink);background:#12063a;overflow-x:hidden}
+#heat{position:fixed;inset:0;width:100%;height:100%;z-index:-2}
+.scrim{position:fixed;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(14,4,36,.8),rgba(14,4,36,.1) 70%)}
+header{display:flex;justify-content:space-between;align-items:center;padding:22px clamp(18px,5vw,64px)}
+.brand{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:22px;letter-spacing:.2px}
+nav{display:flex;gap:22px;font-size:15px;color:var(--dim)}
+nav a{color:inherit;text-decoration:none}
+nav a:hover,nav a:focus-visible{color:#fff;text-decoration:underline;outline:none}
+main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:center;padding:clamp(10px,4vh,50px) clamp(18px,5vw,64px) 60px;min-height:calc(100vh - 80px)}
+h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:clamp(40px,6.4vw,84px);line-height:.98;margin:0 0 18px;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(20,0,40,.5)}
+.lede{max-width:46ch;font-size:clamp(16px,1.5vw,19px);line-height:1.55;color:var(--dim);margin:0 0 26px}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn{font:600 15px "Instrument Sans",system-ui,sans-serif;padding:13px 22px;border-radius:10px;border:1px solid var(--line);color:var(--ink);background:rgba(255,255,255,.08);cursor:pointer;text-decoration:none}
+.btn.main{background:var(--hot);color:#2a0a00;border-color:transparent}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.ctl{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.ctl b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:34px}
+.ctl span{color:var(--dim);font-size:14px}
+input[type=range]{width:100%;accent-color:var(--hot);margin:4px 0 18px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{font-weight:600;text-align:left;color:var(--dim);font-size:13px;padding:0 0 8px}
+td{padding:9px 0;border-top:1px solid var(--line)}
+td.r{text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .4s}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;color:#1b0630}
+.foot{margin-top:12px;font-size:12.5px;color:var(--dim)}
+@media(max-width:820px){main{grid-template-columns:1fr}.scrim{background:rgba(14,4,36,.55)}nav{display:none}}
+#alerts{padding-left:18px;margin:6px 0 0}
+main.app{display:block;min-height:0;padding:10px clamp(18px,5vw,64px) 70px}
+.view[hidden]{display:none}
+.view{animation:in .45s ease}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+nav a{padding:6px 2px;border-bottom:2px solid transparent}
+nav a[aria-current=page]{color:#fff;border-color:var(--hot)}
+h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:clamp(28px,4vw,44px);margin:6px 0 18px;letter-spacing:-.01em}
+h3{font-size:13px;margin:0 0 12px;color:var(--dim);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.home{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:center;min-height:calc(100vh - 140px)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;backdrop-filter:blur(14px)}
+.kpi b{display:block;font:800 clamp(22px,2.6vw,30px)/1.15 "Bricolage Grotesque",system-ui,sans-serif}
+.kpi span{color:var(--dim);font-size:13px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+#map svg{width:100%;max-height:520px}
+.rk{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;width:100%;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;padding:11px 6px;cursor:pointer;text-align:left}
+.rk.on,.rk:hover{background:rgba(255,255,255,.09)}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;color:inherit;font:inherit;text-align:left;cursor:pointer;backdrop-filter:blur(14px);transition:transform .2s}
+.card:hover{transform:translateY(-4px)}
+.ch{display:flex;justify-content:space-between;align-items:center}
+.ch b{font:800 22px "Bricolage Grotesque",system-ui,sans-serif}
+.big{font:800 42px "Bricolage Grotesque",system-ui,sans-serif;margin:8px 0 6px}
+dl{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin:14px 0 0;font-size:13.5px}
+dt{color:var(--dim)}dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.pipe{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.pipe span{padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:600;font-size:14px}
+.pipe i{color:var(--hot);font-style:normal}
+.pulse{animation:pulse 1.8s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{from{transform:scale(1);opacity:.9}to{transform:scale(3.2);opacity:0}}
+.lbl{fill:#fff4e6;font:600 8px "Instrument Sans",sans-serif;paint-order:stroke;stroke:#12063a;stroke-width:2.5px}
+.ax{fill:var(--dim);font:11px "Instrument Sans",system-ui,sans-serif}
+.pin{cursor:pointer}
+.sm{font:600 12px "Instrument Sans",system-ui,sans-serif;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.1);color:var(--ink);cursor:pointer}
+.sm:hover{background:rgba(255,255,255,.2)}
+.card:focus-visible,.rk:focus-visible,.pin:focus-visible,.sm:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:820px){.home,.grid2{grid-template-columns:1fr}nav{display:flex!important;gap:14px;font-size:14px}header{flex-wrap:wrap;gap:8px}}
+@media(prefers-reduced-motion:reduce){.view,.pulse{animation:none}}
+label{display:block;font-size:13px;color:var(--dim);margin-bottom:12px}
+select,input[type=number],input[type=text]{display:block;width:100%;margin-top:5px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.1);color:var(--ink);font:inherit}
+select option{color:#111}
+.sel{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.sel select{width:auto;min-width:170px;margin-top:0}
+td.w{color:#ff8a7d;font-weight:700}
+#toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:20}
+.toast{background:rgba(18,6,40,.94);border:1px solid var(--line);border-left:5px solid #fff;padding:12px 16px;border-radius:10px;font-weight:600;animation:in .3s}
+.live{font:600 12px "Instrument Sans",system-ui,sans-serif;margin-left:12px;vertical-align:middle;color:var(--dim)}
+.live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#ff5a4d;margin-right:6px;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+nav{flex-wrap:wrap}
+#amsg{min-height:1.4em;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--dim);margin-top:12px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+#rank{max-height:430px;overflow:auto}
+</style>
+</head>
+<body>
+<canvas id="heat" aria-hidden="true"></canvas>
+<div class="scrim"></div>
+
+<header>
+  <a class="brand" href="#home" style="color:inherit;text-decoration:none">HeatWatch</a>
+  <nav aria-label="Main"><a href="#dashboard">Dashboard</a><a href="#cities">Cities</a><a href="#compare">Compare</a><a href="#alerts">Alerts</a><a href="#add">Add data</a><a href="#model">Model</a></nav>
+</header>
+
+<main class="app">
+  <section class="view" id="v-home">
+    <div class="home">
+      <div>
+        <h1>Know where the heat hits next.</h1>
+        <p class="lede">A machine-learning model predicts heatwave risk for every city. Real weather is pulled every 5 minutes for dozens of Indian cities, PostgreSQL stores it, triggers fire alerts and this dashboard updates live.</p>
+        <div class="btns"><a class="btn main" href="#dashboard">Open live dashboard</a><a class="btn" href="#alerts">View alert history</a></div>
+      </div>
+      <div class="panel">
+        <h3>Highest risk right now (top 8)</h3>
+        <table><thead><tr><th>City</th><th>Risk</th><th class="r">Alert</th></tr></thead><tbody id="rows"></tbody></table>
+        <div class="legend" aria-label="Risk colour key"><span><i style="background:#8fe3b0"></i>Normal: under 40%</span><span><i style="background:#ffd84a"></i>Yellow: 40 to 60%</span><span><i style="background:#ff9a2e"></i>Orange: 60 to 80%</span><span><i style="background:#ff5a4d"></i>Red: 80% and above</span></div><p class="foot" id="hnote"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-dashboard" hidden>
+    <h2>Live dashboard <span class="live"><i></i>LIVE <em id="upd">-</em></span> <button class="sm" id="fetchNow">Fetch now</button></h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="panel"><h3>Risk map (tap a city)</h3><div id="map"></div><div class="legend" aria-label="Risk colour key"><span><i style="background:#8fe3b0"></i>Normal: under 40%</span><span><i style="background:#ffd84a"></i>Yellow: 40 to 60%</span><span><i style="background:#ff9a2e"></i>Orange: 60 to 80%</span><span><i style="background:#ff5a4d"></i>Red: 80% and above</span></div></div>
+      <div class="panel"><h3>City ranking</h3><div id="rank"></div></div>
+    </div>
+    <div class="panel"><h3>Last 45 days: <span id="tcity">-</span></h3><div id="chart"></div><div class="legend" aria-label="Temperature colour key"><span><i style="background:#8fe3b0"></i>Under 35°C: low</span><span><i style="background:#ffd84a"></i>35 to 40°C: high</span><span><i style="background:#ff9a2e"></i>40 to 45°C: heatwave</span><span><i style="background:#ff5a4d"></i>Over 45°C: extreme</span></div></div>
+  </section>
+
+  <section class="view" id="v-cities" hidden>
+    <h2>Cities</h2><div class="legend" style="margin:-8px 0 16px" aria-label="Risk colour key"><span><i style="background:#8fe3b0"></i>Normal: under 40%</span><span><i style="background:#ffd84a"></i>Yellow: 40 to 60%</span><span><i style="background:#ff9a2e"></i>Orange: 60 to 80%</span><span><i style="background:#ff5a4d"></i>Red: 80% and above</span></div>
+    <input id="cfind" type="text" placeholder="Search a city" aria-label="Search cities" style="max-width:320px;margin-bottom:14px"><div class="cg" id="cgrid"></div>
+  </section>
+
+  <section class="view" id="v-alerts" hidden>
+    <h2>Alert history</h2>
+    <div class="panel" style="overflow-x:auto">
+      <table><thead><tr><th>City</th><th>Level</th><th>Message</th><th>Time</th><th class="r">Action</th></tr></thead><tbody id="atable"></tbody></table>
+      <p class="foot">Alerts are created by a PostgreSQL trigger. “Close” runs the <code>close_alert()</code> stored procedure, and the audit trigger logs it.</p>
+    </div>
+  </section>
+
+  <section class="view" id="v-model" hidden>
+    <h2>The model and the pipeline</h2>
+    <div class="pipe"><span>Open-Meteo live data</span><i>→</i><span>PostgreSQL</span><i>→</i><span>Random Forest</span><i>→</i><span>predictions table</span><i>→</i><span>trigger</span><i>→</i><span>alerts + dashboard</span></div>
+    <div class="panel"><dl id="mfacts"></dl></div>
+  </section>
+<section class="view" id="v-compare" hidden>
+    <h2>Compare cities</h2>
+    <div class="panel">
+      <div class="sel"><select id="cmpA" aria-label="First city"></select><span>vs</span><select id="cmpB" aria-label="Second city"></select></div>
+      <div id="cchart"></div><div class="legend" aria-label="Temperature colour key"><span><i style="background:#8fe3b0"></i>Under 35°C: low</span><span><i style="background:#ffd84a"></i>35 to 40°C: high</span><span><i style="background:#ff9a2e"></i>40 to 45°C: heatwave</span><span><i style="background:#ff5a4d"></i>Over 45°C: extreme</span></div><p class="foot">White line = first city, blue line = second city. The coloured bands behind show the temperature scale.</p>
+      <div id="ctable" style="overflow-x:auto;margin-top:14px"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-add" hidden>
+    <h2>Add data</h2>
+    <div class="grid2">
+      <div class="panel"><h3>Add one reading</h3>
+        <label>City<select id="addCity"></select></label>
+        <label>Temperature (°C)<input id="addT" type="number" step="0.1" value="44"></label>
+        <label>Humidity (%)<input id="addH" type="number" value="30"></label>
+        <label>Wind (km/h)<input id="addW" type="number" step="0.1" value="8"></label>
+        <button class="btn main" id="addBtn">Save reading</button>
+        <p class="foot">Saved as the next hour for that city. A trigger fills in the heat index.</p>
+      </div>
+      <div class="panel"><h3>Simulate the next day</h3>
+        <label>City<select id="simCity"></select></label>
+        <label>Peak temperature <b id="simV">45°C</b><input id="simT" type="range" min="30" max="50" value="45"></label>
+        <button class="btn main" id="simBtn">Add 24 hourly readings</button>
+        <p class="foot">Inserts a full day, refreshes the materialized view, re-runs the model and lets the trigger raise alerts. Watch the dashboard update live.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:16px"><h3>Add a new city</h3>
+      <label>City name (India)<input id="cityName" type="text" placeholder="e.g. Coimbatore"></label>
+      <button class="btn main" id="cityBtn">Add city</button>
+      <p class="foot">Finds the location, downloads a year of real weather, creates its station and cooling centres, and scores it with the model. It then updates every 5 minutes with the rest.</p></div>
+    <p id="amsg" role="status"></p>
+    <div class="panel" style="overflow-x:auto"><h3>Latest rows in weather_readings</h3>
+      <table><thead><tr><th>City</th><th>Time</th><th>Temp</th><th>Humidity</th><th>Wind</th><th class="r">Heat index (by trigger)</th></tr></thead><tbody id="recent"></tbody></table></div>
+  </section>
+</main>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+(function(){
+  /* ---------- Thermal-camera background ---------- */
+  var cv=document.getElementById('heat'),ctx=cv.getContext('2d');
+  var off=document.createElement('canvas'),o=off.getContext('2d',{willReadFrequently:true});
+  var W,H,img,lut=new Uint8Array(256*3);
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var stops=[[0,[18,6,58]],[.28,[82,22,140]],[.5,[214,51,108]],[.72,[255,138,31]],[.9,[255,216,74]],[1,[255,246,214]]];
+  for(var i=0;i<256;i++){
+    var p=i/255,a=stops[0],b=stops[stops.length-1];
+    for(var s=0;s<stops.length-1;s++){if(p>=stops[s][0]&&p<=stops[s+1][0]){a=stops[s];b=stops[s+1];break;}}
+    var f=(p-a[0])/(b[0]-a[0]||1);
+    for(var c=0;c<3;c++)lut[i*3+c]=a[1][c]+(b[1][c]-a[1][c])*f;
+  }
+
+  function resize(){
+    W=Math.max(80,Math.round(innerWidth/7));H=Math.max(50,Math.round(innerHeight/7));
+    cv.width=off.width=W;cv.height=off.height=H;img=ctx.createImageData(W,H);
+  }
+  resize();addEventListener('resize',function(){resize();draw(performance.now()/1000);});
+
+  var blobs=[];
+  for(var n=0;n<9;n++)blobs.push({sx:.12+Math.random()*.2,sy:.1+Math.random()*.2,px:Math.random()*6,py:Math.random()*6,r:.22+Math.random()*.25});
+  var mouse={x:.7,y:.4,tx:.7,ty:.4};
+  addEventListener('pointermove',function(e){mouse.tx=e.clientX/innerWidth;mouse.ty=e.clientY/innerHeight;});
+
+  var heat=.5,target=.5;
+  function draw(t){
+    heat+=(target-heat)*.06;
+    mouse.x+=(mouse.tx-mouse.x)*.05;mouse.y+=(mouse.ty-mouse.y)*.05;
+    o.globalCompositeOperation='source-over';
+    o.fillStyle='rgb(22,22,22)';o.fillRect(0,0,W,H);
+    o.globalCompositeOperation='lighter';
+    var m=Math.min(W,H);
+    function blob(x,y,r,al){
+      var g=o.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(255,255,255,'+al+')');g.addColorStop(1,'rgba(255,255,255,0)');
+      o.fillStyle=g;o.fillRect(x-r,y-r,r*2,r*2);
+    }
+    for(var i=0;i<blobs.length;i++){
+      var b=blobs[i];
+      blob(W*(.5+.46*Math.sin(t*b.sx+b.px)),H*(.5+.46*Math.cos(t*b.sy+b.py)),m*b.r*(.7+heat*.7),.2+heat*.42);
+    }
+    blob(W*mouse.x,H*mouse.y,m*.3,.55);
+    var d=o.getImageData(0,0,W,H).data,out=img.data;
+    for(var k=0,j=0;k<d.length;k+=4,j++){
+      var v=d[k]*3;
+      out[k]=lut[v];out[k+1]=lut[v+1];out[k+2]=lut[v+2];out[k+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+  }
+  function loop(ms){draw(ms/1000);if(!reduce)requestAnimationFrame(loop);}
+  requestAnimationFrame(loop);
+
+  /* ---------- App: routing + live data from Flask / PostgreSQL ---------- */
+  var COL={RED:'#ff5a4d',ORANGE:'#ff9a2e',YELLOW:'#ffd84a',NORMAL:'#8fe3b0'};
+  var XY={Nagpur:[79.09,21.15],Mumbai:[72.88,19.08],Pune:[73.86,18.52],Delhi:[77.21,28.61],Ahmedabad:[72.57,23.02],Jaipur:[75.79,26.91],Hyderabad:[78.49,17.39]};
+  var OUT=[[68.2,23.7],[70.6,20.9],[72.8,21.1],[72.8,19.0],[73.7,16.0],[74.8,12.9],[76.3,9.9],[77.5,8.1],[79.2,9.6],[80.3,13.1],[80.3,15.5],[82.3,17.2],[85.0,19.6],[87.0,21.5],[88.9,21.9],[88.7,24.5],[88.4,26.5],[91.7,26.8],[92.3,24.9],[93.0,22.8],[94.5,24.3],[95.2,26.9],[97.3,28.3],[95.0,29.0],[92.0,27.8],[88.9,27.4],[88.1,27.9],[84.0,28.7],[80.2,30.4],[79.0,31.2],[78.7,34.0],[77.0,35.5],[74.5,34.7],[73.8,32.5],[75.3,31.2],[74.3,29.8],[71.2,28.0],[70.2,25.9],[69.0,24.3]];
+  var $=function(i){return document.getElementById(i);};
+  function esc(t){var d=document.createElement('div');d.textContent=t==null?'':t;return d.innerHTML;}
+  function tag(l){return '<span class="tag" style="background:'+COL[l]+'">'+l+'</span>';}
+  function bar(r,l){return '<div class="bar"><i style="width:'+Math.round(r*100)+'%;background:'+COL[l]+'"></i></div>';}
+  function pct(r){return Math.round(r*100)+'%';}
+  function get(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  var sel=null,cities=[],stats={};
+
+  /* router */
+  var views=document.querySelectorAll('.view'),links=document.querySelectorAll('nav a');
+  function route(){
+    var v=(location.hash||'#home').slice(1);
+    if(!$('v-'+v))v='home';
+    views.forEach(function(el){el.hidden=el.id!=='v-'+v;});
+    links.forEach(function(a){if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+    scrollTo(0,0);
+  }
+  addEventListener('hashchange',route);route();
+
+  /* renderers */
+  function P(lo,la){return ((lo-67)*10).toFixed(1)+','+((37-la)*10).toFixed(1);}
+  function renderMap(){
+    var s='<svg viewBox="0 0 310 300" role="img" aria-label="Map of heatwave risk across India"><polygon points="'+OUT.map(function(p){return P(p[0],p[1]);}).join(' ')+'" fill="rgba(255,255,255,.07)" stroke="rgba(255,220,190,.45)" stroke-width="1.2" stroke-linejoin="round"/>';
+    cities.forEach(function(c){
+      if(c.lat==null)return;
+      var xy=P(c.lon,c.lat).split(','),x=+xy[0],y=+xy[1],col=COL[c.level],hot=c.level==='RED'||c.level==='ORANGE',left=c.city==='Mumbai';
+      s+='<g class="pin" data-city="'+esc(c.city)+'" tabindex="0" role="button" aria-label="'+esc(c.city)+', '+c.level+'">'+
+        (hot?'<circle cx="'+x+'" cy="'+y+'" r="6" fill="none" stroke="'+col+'" stroke-width="2" class="pulse"/>':'')+
+        '<circle cx="'+x+'" cy="'+y+'" r="'+(3+c.risk*5)+'" fill="'+col+'" stroke="#1b0630" stroke-width="1.5"/>'+
+        '<title>'+esc(c.city)+' '+pct(c.risk)+'</title>'+((hot||c.city===sel)?'<text x="'+(left?x-10:x+10)+'" y="'+(y+3)+'"'+(left?' text-anchor="end"':'')+' class="lbl">'+esc(c.city)+'</text>':'')+'</g>';
+    });
+    $('map').innerHTML=s+'</svg>';
+  }
+  function renderRank(){
+    $('rank').innerHTML=cities.map(function(c){
+      return '<button class="rk'+(c.city===sel?' on':'')+'" data-city="'+esc(c.city)+'"><span>'+esc(c.city)+'</span>'+bar(c.risk,c.level)+'<b>'+pct(c.risk)+'</b></button>';}).join('');
+  }
+  function renderKpis(){
+    var top=cities[0],hot=cities.filter(function(c){return c.level==='RED'||c.level==='ORANGE';}).length;
+    var k=[[hot,'cities on Red or Orange alert'],[top?top.city+' '+pct(top.risk):'-','highest risk tomorrow'],[stats.open_alerts,'open alerts'],[stats.model?(stats.model.accuracy*100).toFixed(1)+'%':'-','model accuracy']];
+    $('kpis').innerHTML=k.map(function(x){return '<div class="kpi"><b>'+esc(x[0])+'</b><span>'+x[1]+'</span></div>';}).join('');
+  }
+  function renderHome(){
+    $('rows').innerHTML=cities.slice(0,8).map(function(c){return '<tr><td>'+esc(c.city)+'</td><td>'+bar(c.risk,c.level)+'</td><td class="r">'+tag(c.level)+'</td></tr>';}).join('');
+    $('hnote').textContent=stats.model?'':'No predictions yet. Run train_model.py.';
+  }
+  function renderCities(){
+    $('cgrid').innerHTML=cities.filter(function(c){return c.city.toLowerCase().indexOf(($('cfind').value||'').toLowerCase())>=0;}).map(function(c){
+      return '<button class="card" data-city="'+esc(c.city)+'"><div class="ch"><b>'+esc(c.city)+'</b>'+tag(c.level)+'</div><div class="foot">'+esc(c.region)+'</div>'+
+        '<div class="big">'+pct(c.risk)+'</div>'+bar(c.risk,c.level)+
+        '<dl><dt>Latest max temp</dt><dd>'+(c.latest_max==null?'-':c.latest_max+'°C')+'</dd><dt>Population</dt><dd>'+(c.population/1e6).toFixed(1)+'M</dd>'+
+        '<dt>Vulnerability</dt><dd>'+Math.round(c.vulnerability*100)+'/100</dd><dt>People per cooling seat</dt><dd>'+c.people_per_seat+'</dd></dl></button>';}).join('');
+  }
+  function renderAlerts(a){
+    $('atable').innerHTML=a.length?a.map(function(x){
+      return '<tr><td>'+esc(x.city)+'</td><td>'+tag(x.level)+'</td><td>'+esc(x.message)+'</td><td>'+esc(x.created)+'</td><td class="r">'+
+        (x.status==='OPEN'?'<button class="sm" data-close="'+x.alert_id+'">Close</button>':'Closed')+'</td></tr>';}).join(''):'<tr><td colspan="5">No alerts yet.</td></tr>';
+  }
+  function renderModel(){
+    var m=stats.model||{};
+    $('mfacts').innerHTML=[['Algorithm',m.name?m.name+' v'+m.version:'Not trained yet'],['Held-out accuracy',m.accuracy!=null?(m.accuracy*100).toFixed(1)+'%':'-'],
+      ['Trained',m.trained||'-'],['Training data',(stats.readings||0).toLocaleString()+' hourly readings'],['Date range',stats.first_day+' to '+stats.last_day],
+      ['Target','Next-day max temperature of 40°C or more'],['Features','avg temp, max temp, heat index, previous day, 3-day mean']]
+      .map(function(r){return '<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>';}).join('');
+  }
+  /* ---- colour scale: green low, yellow high, orange heatwave, red extreme ---- */
+  var TB=[[-99,35,'#8fe3b0'],[35,40,'#ffd84a'],[40,45,'#ff9a2e'],[45,99,'#ff5a4d']];
+  function TC(t){return t<35?'#8fe3b0':t<40?'#ffd84a':t<45?'#ff9a2e':'#ff5a4d';}
+  function bands(pl,W,Y,lo,hi){return TB.map(function(b){var a=Math.max(b[0],lo),z=Math.min(b[1],hi);if(z<=a)return '';return '<rect x="'+pl+'" width="'+(W-pl-10)+'" y="'+Y(z)+'" height="'+(Y(a)-Y(z))+'" fill="'+b[2]+'" opacity=".14"/>';}).join('');}
+  function segs(d,k,X,Y){var o='';for(var i=1;i<d.length;i++)o+='<line x1="'+X(i-1).toFixed(1)+'" y1="'+Y(d[i-1][k]).toFixed(1)+'" x2="'+X(i).toFixed(1)+'" y2="'+Y(d[i][k]).toFixed(1)+'" stroke="'+TC(d[i][k])+'" stroke-width="3.5" stroke-linecap="round"/>';return o;}
+  function chart(d){
+    var W=640,H=250,pl=34,ys=d.map(function(r){return r.max_temp;}).concat(d.map(function(r){return r.avg_temp;}),[40]);
+    var lo=Math.floor(Math.min.apply(0,ys)-2),hi=Math.ceil(Math.max.apply(0,ys)+2);
+    function X(i){return pl+i*(W-pl-10)/Math.max(1,d.length-1);}
+    function Y(v){return H-26-(v-lo)*(H-46)/(hi-lo);}
+    function pts(k){return d.map(function(r,i){return X(i).toFixed(1)+','+Y(r[k]).toFixed(1);}).join(' ');}
+    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily temperature trend" style="width:100%">';
+    s+=bands(pl,W,Y,lo,hi);for(var t=0;t<=4;t++){var v=lo+(hi-lo)*t/4;s+='<line x1="'+pl+'" x2="'+(W-10)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="rgba(255,220,190,.14)"/><text x="4" y="'+(Y(v)+4)+'" class="ax">'+Math.round(v)+'°</text>';}
+    s+='<line x1="'+pl+'" x2="'+(W-10)+'" y1="'+Y(40)+'" y2="'+Y(40)+'" stroke="#ff5a4d" stroke-dasharray="6 5"/><text x="'+(W-12)+'" y="'+(Y(40)-5)+'" text-anchor="end" class="ax" style="fill:#ff8a7d">40°C heatwave threshold</text>';
+    
+    s+='<polyline fill="none" stroke="rgba(255,244,230,.6)" stroke-width="1.8" stroke-dasharray="4 3" points="'+pts('avg_temp')+'"/>'+segs(d,'max_temp',X,Y);
+    s+='<text x="'+pl+'" y="'+(H-6)+'" class="ax">'+d[0].day+'</text><text x="'+(W-10)+'" y="'+(H-6)+'" text-anchor="end" class="ax">'+d[d.length-1].day+'</text>';
+    s+='<text x="'+(pl+8)+'" y="14" class="ax">solid line = daily max (coloured by severity), dashed = daily average</text>';
+    return s+'</svg>';
+  }
+  function loadTrend(){
+    if(!sel)return;$('tcity').textContent=sel;
+    get('/api/trend/'+encodeURIComponent(sel)).then(function(d){$('chart').innerHTML=d.length?chart(d):'<p class="foot">No readings for this city.</p>';}).catch(function(){});
+  }
+  function pick(c,go){sel=c;renderRank();loadTrend();if(go)location.hash='#dashboard';}
+
+  /* events */
+  document.addEventListener('click',function(e){
+    var p=e.target.closest('[data-city]');
+    if(p){pick(p.getAttribute('data-city'),!p.closest('#v-dashboard'));return;}
+    var b=e.target.closest('[data-close]');
+    if(b){fetch('/api/alerts/'+b.getAttribute('data-close')+'/close',{method:'POST'}).then(load);}
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('pin'))pick(e.target.getAttribute('data-city'),false);
+  });
+
+  /* data */
+  function load(){
+    Promise.all([get('/api/cities'),get('/api/alerts'),get('/api/stats')]).then(function(r){
+      cities=r[0];stats=r[2];
+      if(!sel&&cities.length)sel=cities[0].city;
+      renderHome();renderKpis();renderMap();renderRank();renderCities();renderAlerts(r[1]);renderModel();loadTrend();renderOpts();loadCompare();loadRecent();checkNew(r[1]);setLive(stats.live);
+      target=cities.length?Math.min(1,Math.max(.25,cities[0].risk)):.3;
+      if(reduce)draw(0);
+    }).catch(function(){$('rows').innerHTML='<tr><td colspan="3">Cannot reach the API or database. Is app.py running?</td></tr>';});
+  }
+  /* ---- live alerts toast ---- */
+  var seen=null;
+  function toast(m,l){var t=document.createElement('div');t.className='toast';t.style.borderLeftColor=COL[l]||'#fff';t.textContent=m;$('toasts').appendChild(t);setTimeout(function(){t.remove();},6000);}
+  function checkNew(a){
+    if(seen)a.forEach(function(x){if(seen.indexOf(x.alert_id)<0&&x.status==='OPEN')toast('New '+x.level+' alert: '+x.city,x.level);});
+    seen=a.map(function(x){return x.alert_id;});
+  }
+  /* ---- selects ---- */
+  function renderOpts(){
+    var o=cities.map(function(c){return '<option>'+esc(c.city)+'</option>';}).join('');
+    ['cmpA','cmpB','addCity','simCity'].forEach(function(id){var el=$(id);if(el.options.length!==cities.length){el.innerHTML=o;el.selectedIndex=id==='cmpB'?cities.length-1:0;}});
+  }
+  /* ---- compare ---- */
+  function chart2(da,db,a,b){
+    var W=640,H=250,pl=34,all=da.concat(db).map(function(r){return r.max_temp;}).concat([40]);
+    var lo=Math.floor(Math.min.apply(0,all)-2),hi=Math.ceil(Math.max.apply(0,all)+2),n=Math.max(da.length,db.length);
+    function X(i){return pl+i*(W-pl-10)/Math.max(1,n-1);}
+    function Y(v){return H-26-(v-lo)*(H-46)/(hi-lo);}
+    function ln(d,c){return '<polyline fill="none" stroke="'+c+'" stroke-width="3" stroke-linejoin="round" points="'+d.map(function(r,i){return X(i).toFixed(1)+','+Y(r.max_temp).toFixed(1);}).join(' ')+'"/>';}
+    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily max temperature comparison" style="width:100%">';
+    s+=bands(pl,W,Y,lo,hi);for(var t=0;t<=4;t++){var v=lo+(hi-lo)*t/4;s+='<line x1="'+pl+'" x2="'+(W-10)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="rgba(255,220,190,.14)"/><text x="4" y="'+(Y(v)+4)+'" class="ax">'+Math.round(v)+'°</text>';}
+    s+='<line x1="'+pl+'" x2="'+(W-10)+'" y1="'+Y(40)+'" y2="'+Y(40)+'" stroke="#ff5a4d" stroke-dasharray="6 5"/>'+ln(da,'#ffffff')+ln(db,'#6fd3ff');
+    s+='<text x="'+(pl+8)+'" y="14" class="ax" style="fill:#ffffff">'+esc(a)+' (daily max)</text><text x="'+(pl+150)+'" y="14" class="ax" style="fill:#6fd3ff">'+esc(b)+' (daily max)</text>';
+    s+='<text x="'+pl+'" y="'+(H-6)+'" class="ax">'+(da[0]?da[0].day:'')+'</text><text x="'+(W-10)+'" y="'+(H-6)+'" text-anchor="end" class="ax">'+(da.length?da[da.length-1].day:'')+'</text>';
+    return s+'</svg>';
+  }
+  function cmpTable(a,b,da,db){
+    var A=cities.filter(function(c){return c.city===a;})[0],B=cities.filter(function(c){return c.city===b;})[0];
+    if(!A||!B)return '';
+    var hot=function(d){return d.filter(function(x){return x.max_temp>=40;}).length;},pk=function(d){return Math.max.apply(0,d.map(function(x){return x.max_temp;}));};
+    var R=[['Heatwave risk tomorrow',pct(A.risk),pct(B.risk),A.risk,B.risk],['Latest max temp',A.latest_max+'°C',B.latest_max+'°C',A.latest_max,B.latest_max],
+      ['Days at 40°C or more (45 days)',hot(da),hot(db),hot(da),hot(db)],['Peak temp (45 days)',pk(da)+'°C',pk(db)+'°C',pk(da),pk(db)],
+      ['Population',(A.population/1e6).toFixed(1)+'M',(B.population/1e6).toFixed(1)+'M'],['Vulnerability',Math.round(A.vulnerability*100)+'/100',Math.round(B.vulnerability*100)+'/100',A.vulnerability,B.vulnerability],
+      ['People per cooling seat',A.people_per_seat,B.people_per_seat,A.people_per_seat,B.people_per_seat]];
+    return '<table><thead><tr><th>Metric</th><th>'+esc(a)+'</th><th>'+esc(b)+'</th></tr></thead><tbody>'+R.map(function(r){
+      var w=r[3]!=null&&r[3]!==r[4];
+      return '<tr><td>'+r[0]+'</td><td class="'+(w&&r[3]>r[4]?'w':'')+'">'+r[1]+'</td><td class="'+(w&&r[4]>r[3]?'w':'')+'">'+r[2]+'</td></tr>';}).join('')+'</tbody></table><p class="foot">Red = the higher (worse) value.</p>';
+  }
+  function loadCompare(){
+    var a=$('cmpA').value,b=$('cmpB').value;if(!a||!b)return;
+    Promise.all([get('/api/trend/'+encodeURIComponent(a)),get('/api/trend/'+encodeURIComponent(b))]).then(function(r){
+      $('cchart').innerHTML=chart2(r[0],r[1],a,b);$('ctable').innerHTML=cmpTable(a,b,r[0],r[1]);}).catch(function(){});
+  }
+  $('cmpA').addEventListener('change',loadCompare);$('cmpB').addEventListener('change',loadCompare);
+  /* ---- add data ---- */
+  function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||r.status);return j;});});}
+  function amsg(t,bad){var m=$('amsg');m.textContent=t;m.style.color=bad?'#ff8a7d':'#8fe3b0';}
+  var done='Saved. The trigger computed the heat index, the model re-scored and alerts were updated. Check the Dashboard.';
+  $('addBtn').addEventListener('click',function(){
+    post('/api/readings',{city:$('addCity').value,temp_c:$('addT').value,humidity:$('addH').value,wind_kmh:$('addW').value}).then(function(){amsg(done);load();}).catch(function(e){amsg(e.message,true);});
+  });
+  $('simBtn').addEventListener('click',function(){
+    amsg('Working...');
+    post('/api/simulate',{city:$('simCity').value,peak:$('simT').value}).then(function(){amsg(done);load();}).catch(function(e){amsg(e.message,true);});
+  });
+  $('simT').addEventListener('input',function(){$('simV').textContent=this.value+'°C';});
+  function loadRecent(){
+    get('/api/readings/recent').then(function(d){
+      $('recent').innerHTML=d.map(function(x){return '<tr><td>'+esc(x.city)+'</td><td>'+esc(x.t)+'</td><td>'+x.temp_c+'°C</td><td>'+x.humidity+'%</td><td>'+x.wind+' km/h</td><td class="r">'+x.heat_index+'°C</td></tr>';}).join('');}).catch(function(){});
+  }
+  /* ---- live status, search, add city ---- */
+  var liveNext=0,liveLast='waiting for first fetch',liveErr='';
+  function setLive(l){
+    if(!l)return;
+    liveLast=l.last?new Date(l.last).toLocaleTimeString():'waiting for first fetch';
+    liveNext=Date.now()+l.next_in*1000;
+    liveErr=(l.status&&l.status!=='ok'&&l.status!=='starting')?l.status:'';
+    tick();
+  }
+  function tick(){var s=Math.max(0,Math.round((liveNext-Date.now())/1000));$('upd').textContent='data '+liveLast+', next fetch in '+Math.floor(s/60)+':'+('0'+s%60).slice(-2)+(liveErr?' ('+liveErr+')':'');}
+  setInterval(tick,1000);
+  $('fetchNow').addEventListener('click',function(){$('upd').textContent='fetching...';post('/api/live/refresh',{}).then(load).catch(function(e){$('upd').textContent=e.message;});});
+  $('cfind').addEventListener('input',renderCities);
+  $('cityBtn').addEventListener('click',function(){
+    var n=$('cityName').value.trim();
+    if(!n){amsg('Type a city name.',true);return;}
+    amsg('Adding '+n+': finding it, downloading a year of weather, scoring it (about 10 seconds)...');
+    post('/api/cities',{name:n}).then(function(r){amsg(r.city+' added. It is now on the map, Cities, Compare and the Dashboard.');$('cityName').value='';load();}).catch(function(e){amsg(e.message,true);});
+  });
+  load();setInterval(function(){if(!document.hidden)load();},10000);
+
+})();
+</script>
+</body>
+</html>
